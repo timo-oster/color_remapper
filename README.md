@@ -4,6 +4,8 @@
 
 *Use color remapper!*
 
+![demo image](promo.png)
+
 This small python tool helps you to change the color map of a visualized scalar field. Inputs are the image and descriptions of the source and target color maps.
 
 What it can do

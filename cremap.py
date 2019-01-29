@@ -107,7 +107,7 @@ def read_img(filename):
     (rows, cols, pngdata, meta) = r.asDirect()
     image_2d = np.vstack(map(np.uint16, pngdata))
     image_3d = np.reshape(image_2d,
-                          (rows, cols, meta['planes']))
+                          (cols, rows, meta['planes']))
     return np.double(image_3d) / 255
 
 
@@ -176,6 +176,10 @@ def main():
     args = parser.parse_args()
 
     img = read_img(args.input)
+
+    # remove alpha channel
+    if img.shape[2] > 3:
+        img = img[:, :, 0:3]
 
     cmap_in = read_cmap(args.cmap_in,
                         delimiter=args.separator,

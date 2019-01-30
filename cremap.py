@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 
 # map a scalar value to a color from a colormap
 def map_to_color(scalar, colormap):
+    if scalar is None:
+        return None
     # search in list to find scalar
     lo = int(0)
     hi = int(colormap.shape[0] - 1)
@@ -49,14 +51,6 @@ def map_to_scalar(color, colormap, tol):
     return None
 
 
-# map a color from one color map to another
-def map_color(color, cmap_in, cmap_out, tol):
-    scalar = map_to_scalar(color, cmap_in, tol)
-    if scalar is None:
-        return color
-    return map_to_color(scalar, cmap_out)
-
-
 def normalize_cmap(cmap, dtype=None, invert=False):
     """normalize the color values to 0...1 depending on data type and add a
         scalar column with equidistant values if none is present."""
@@ -80,6 +74,7 @@ def normalize_cmap(cmap, dtype=None, invert=False):
     max_scal = np.max(cmap[:, 0])
     cmap[:, 0] = (cmap[:, 0] - min_scal) / (max_scal - min_scal)
     return cmap
+
 
 def read_cmap(filename, invert=False, delimiter=None, dtype=None):
     with open(filename) as csvfile:
@@ -116,10 +111,20 @@ def write_img(img, filename):
     png.from_array(img_16.tolist(), mode='RGB').save(filename)
 
 
-def remap_img(img, cmap_in, cmap_out, tol):
-    return np.apply_along_axis(lambda c: map_color(c, cmap_in, cmap_out, tol),
-                               2,
-                               img)
+def remap_img(img, cmap_in, cmap_out, tol, spread=False):
+    scalar_field = np.apply_along_axis(lambda c: map_to_scalar(c, cmap_in, tol),
+                                       2,
+                                       img)
+    if spread:
+        smin = np.min(scalar_field)
+        smax = np.max(scalar_field)
+        scalar_field = (scalar_field - smin) / (smax - smin)
+    img_r = img
+    for i in range(img_r.shape[0]):
+        for j in range(img_r.shape[1]):
+            color = map_to_color(scalar_field[i, j], cmap_out)
+            img_r[i, j, :] = color if color is not None else img[i, j, :]
+    return img_r
 
 
 def main():
@@ -172,6 +177,11 @@ def main():
                         default=',')
     parser.add_argument("-i", "--invert", help="Invert the output color map",
                         action='store_true')
+    parser.add_argument("--spread",
+                        help="Normalize the scalars to spread the whole "+
+                             "output colormap range. Default: use same range "+
+                             "as input colormap",
+                        action='store_true')
 
     args = parser.parse_args()
 
@@ -190,7 +200,7 @@ def main():
                          delimiter=args.separator,
                          dtype=args.color_dtype)
 
-    img_r = remap_img(img, cmap_in, cmap_out, args.tolerance)
+    img_r = remap_img(img, cmap_in, cmap_out, args.tolerance, args.spread)
 
     write_img(img_r, args.output)
 
